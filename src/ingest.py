@@ -17,6 +17,11 @@ PG_VECTOR_COLLECTION_NAME = os.getenv("PG_VECTOR_COLLECTION_NAME")
 def ingest_pdf():
     # 1. Validar: todas as variáveis existem? O arquivo do PDF existe?
     #    (falhar cedo, com mensagem clara)
+    if not PDF_PATH or not OPENAI_EMBEDDING_MODEL or not DATABASE_URL or not PG_VECTOR_COLLECTION_NAME:
+        raise SystemExit("Alguma variável de ambiente não está definida.Verifique variáveis declaradas no arquivo .env")
+
+    if not os.path.exists(PDF_PATH):
+        raise SystemExit(f"Erro: PDF não encontrado em '{PDF_PATH}'.")
 
     # 2. Carregar o PDF -> lista de Document (1 por página). Imprimir quantas páginas.
     loader = PyPDFLoader(PDF_PATH)
