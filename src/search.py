@@ -1,3 +1,16 @@
+import os
+from dotenv import load_dotenv
+from langchain_postgres import PGVector
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+
+load_dotenv()
+
+OPENAI_EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL")
+OPENAI_CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL")
+DATABASE_URL = os.getenv("DATABASE_URL")
+PG_VECTOR_COLLECTION_NAME = os.getenv("PG_VECTOR_COLLECTION_NAME")
+
+
 PROMPT_TEMPLATE = """
 CONTEXTO:
 {contexto}
@@ -25,5 +38,39 @@ PERGUNTA DO USUÁRIO:
 RESPONDA A "PERGUNTA DO USUÁRIO"
 """
 
+
+def testar_busca(pergunta):
+    embeddings = OpenAIEmbeddings(model=OPENAI_EMBEDDING_MODEL)
+    vector_store = PGVector(
+        embeddings=embeddings,
+        collection_name=PG_VECTOR_COLLECTION_NAME,
+        connection=DATABASE_URL,
+        use_jsonb=True,
+    )
+    resultados = vector_store.similarity_search_with_score(pergunta, k=10)
+
+    print(f"Resultados encontrados: {len(resultados)}")
+    for doc, score in resultados:
+        print(f"[score {score:.4f}] {doc.page_content[:80]}")
+
+    contexto = "\n\n".join(doc.page_content for doc, _ in resultados)
+    prompt = PROMPT_TEMPLATE.format(contexto=contexto, pergunta=pergunta)
+
+    llm = ChatOpenAI(model=OPENAI_CHAT_MODEL)
+    resposta = llm.invoke(prompt)
+
+    print("\nRESPOSTA:", resposta.content)
+    return resposta.content
+
+
 def search_prompt(question=None):
-    pass
+    if question is None:
+        question = input("Faça sua pergunta: ").strip()
+    if not question:
+        return None
+    return testar_busca(question)
+
+
+if __name__ == "__main__":
+    search_prompt()
+    
