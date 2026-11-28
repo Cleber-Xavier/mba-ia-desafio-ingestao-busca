@@ -11,7 +11,11 @@ def main():
     print("Faça sua pergunta (digite 'sair' para encerrar):")
 
     while True:
-        pergunta = input("\nPERGUNTA: ").strip()
+        try:
+            pergunta = input("\nPERGUNTA: ").strip()
+        except (KeyboardInterrupt, EOFError):
+            print("\nAté logo!")
+            break
 
         if pergunta.lower() == "sair":
             print("Até logo!")
