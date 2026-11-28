@@ -39,7 +39,12 @@ RESPONDA A "PERGUNTA DO USUÁRIO"
 """
 
 
-def testar_busca(pergunta):
+def search_prompt(question=None):
+    if not OPENAI_EMBEDDING_MODEL or not OPENAI_CHAT_MODEL or not DATABASE_URL or not PG_VECTOR_COLLECTION_NAME:
+        print("Erro: variáveis faltando no .env. Confira os modelos, DATABASE_URL e PG_VECTOR_COLLECTION_NAME.")
+        return None
+
+    # ---- PREPARAR (roda UMA vez) ----
     embeddings = OpenAIEmbeddings(model=OPENAI_EMBEDDING_MODEL)
     vector_store = PGVector(
         embeddings=embeddings,
@@ -47,30 +52,19 @@ def testar_busca(pergunta):
         connection=DATABASE_URL,
         use_jsonb=True,
     )
-    resultados = vector_store.similarity_search_with_score(pergunta, k=10)
-
-    print(f"Resultados encontrados: {len(resultados)}")
-    for doc, score in resultados:
-        print(f"[score {score:.4f}] {doc.page_content[:80]}")
-
-    contexto = "\n\n".join(doc.page_content for doc, _ in resultados)
-    prompt = PROMPT_TEMPLATE.format(contexto=contexto, pergunta=pergunta)
-
     llm = ChatOpenAI(model=OPENAI_CHAT_MODEL)
-    resposta = llm.invoke(prompt)
 
-    print("\nRESPOSTA:", resposta.content)
-    return resposta.content
+    # ---- RESPONDER (roda a CADA pergunta) ----
+    def responder(pergunta):
+        resultados = vector_store.similarity_search_with_score(pergunta, k=10)
+        contexto = "\n\n".join(doc.page_content for doc, _ in resultados)
+        prompt = PROMPT_TEMPLATE.format(contexto=contexto, pergunta=pergunta)
+        resposta = llm.invoke(prompt)
+        return resposta.content
 
-
-def search_prompt(question=None):
-    if question is None:
-        question = input("Faça sua pergunta: ").strip()
-    if not question:
-        return None
-    return testar_busca(question)
+    return responder
 
 
 if __name__ == "__main__":
-    search_prompt()
-    
+    responder = search_prompt()
+    print(responder("Qual o faturamento da Alfa Energia S.A.?"))    
